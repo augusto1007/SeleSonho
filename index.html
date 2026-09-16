@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seleção dos Sonhos — Copa do Brasil</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Seleção dos <span>Sonhos</span></h1>
+      <div class="tagline">A cada rodada, sorteamos um time campeão ou vice de uma edição da Copa do Brasil. Escolha um jogador e encaixe na sua escalação — até fechar os 11. Depois, encare a própria Copa do Brasil: Oitavas, Quartas, Semi e Final.</div>
+    </div>
+    <div class="header-actions">
+      <div class="stat">Pulos restantes<b id="skipCount">3</b></div>
+      <button type="button" class="edit-names-btn" onclick="openSetupModal()">✏️ Nomes</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div>
+      <div class="pitch-card">
+        <div class="pitch" id="pitch"></div>
+        <div class="pitch-hint">Quando um jogador servir para mais de uma posição, toque na vaga desejada para escalar. Depois, toque num titular e depois na vaga de destino (ou arraste) para trocá-lo de posição.</div>
+      </div>
+      <div class="ovr-panel" id="ovrPanel"></div>
+    </div>
+
+    <div class="draft-card" id="draftCard"></div>
+  </div>
+
+  <footer>Elencos campeões e vices reais da Copa do Brasil (1995–2025), posições simplificadas em 6 categorias para o jogo.</footer>
+</div>
+
+<div class="modal-overlay" id="setupModal">
+  <div class="modal-box">
+    <h2>Antes de começar…</h2>
+    <p>Dê um nome pra sua seleção, pro seu estádio, e escolha a formação. Nomes você pode mudar depois no botão “✏️ Nomes” — mas a formação é definitiva, não dá pra trocar depois de começar.</p>
+    <label class="config-field">
+      <span>Nome da sua seleção</span>
+      <input type="text" id="teamNameInput" maxlength="28" placeholder="Sua Seleção" autocomplete="off">
+    </label>
+    <label class="config-field">
+      <span>Nome do seu estádio</span>
+      <input type="text" id="stadiumNameInput" maxlength="28" placeholder="Estádio dos Sonhos" autocomplete="off">
+    </label>
+
+    <div class="config-field" id="formationSection">
+      <span>Formação (escolha definitiva, não dá pra mudar depois)</span>
+      <div class="formation-grid" id="formationGrid">
+        <button type="button" class="formation-btn" data-key="433"  onclick="selectFormationOption('433')">4-3-3</button>
+        <button type="button" class="formation-btn" data-key="442"  onclick="selectFormationOption('442')">4-4-2</button>
+        <button type="button" class="formation-btn" data-key="4231" onclick="selectFormationOption('4231')">4-2-3-1</button>
+        <button type="button" class="formation-btn" data-key="352"  onclick="selectFormationOption('352')">3-5-2</button>
+        <button type="button" class="formation-btn" data-key="532"  onclick="selectFormationOption('532')">5-3-2</button>
+        <button type="button" class="formation-btn" data-key="4141" onclick="selectFormationOption('4141')">4-1-4-1</button>
+        <button type="button" class="formation-btn" data-key="343"  onclick="selectFormationOption('343')">3-4-3</button>
+        <button type="button" class="formation-btn" data-key="4312" onclick="selectFormationOption('4312')">4-3-1-2</button>
+      </div>
+      <div class="mini-pitch" id="formationPreview"></div>
+    </div>
+
+    <div class="config-field hidden" id="formationLockedNote">
+      <span>Formação</span>
+      <div class="locked-note">🔒 <span id="lockedFormationText">4-3-3</span> — definida no começo, não pode mais mudar.</div>
+    </div>
+
+    <div class="controls" style="justify-content:center;margin-top:20px;">
+      <button type="button" class="action primary" id="confirmSetupBtn" onclick="confirmSetup()">Começar a montar a seleção</button>
+    </div>
+  </div>
+</div>
+
+<!-- data.js precisa ser carregado antes de app.js, pois app.js usa TEAMS -->
+<script src="data.js"></script>
+<script src="cup.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
