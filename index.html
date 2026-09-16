@@ -18,7 +18,8 @@
     </div>
     <div class="header-actions">
       <div class="stat">Pulos restantes<b id="skipCount">3</b></div>
-      <button type="button" class="edit-names-btn" onclick="openSetupModal()">✏️ Nomes</button>
+      <button type="button" class="edit-names-btn" id="soundToggleBtn" onclick="toggleSoundsMuted()" title="Ativar/desativar sons de torcida">🔊</button>
+      <button type="button" class="edit-names-btn" onclick="openSetupModal()">✏️ Alterar nomes</button>
     </div>
   </header>
 
@@ -37,10 +38,60 @@
   <footer>Elencos campeões e vices reais da Copa do Brasil (1995–2025), posições simplificadas em 6 categorias para o jogo.</footer>
 </div>
 
-<div class="modal-overlay" id="setupModal">
+<div class="modal-overlay" id="welcomeModal">
+  <div class="modal-box welcome-box">
+    <div class="welcome-badge">🏆 Copa do Brasil · 1995–2025</div>
+    <h2>Bem-vindo à Seleção dos Sonhos!</h2>
+    <p class="welcome-lead">Você vai montar um time dos sonhos garimpando jogadores dos elencos campeões e vices da Copa do Brasil — e depois disputar a competição com ele.</p>
+
+    <ol class="howto">
+      <li>
+        <b>Escolha nome e formação</b>
+        <span>Dê um nome pra sua seleção e pro seu estádio e escolha entre 8 formações. Os nomes você troca quando quiser; a formação é <b>definitiva</b>.</span>
+      </li>
+      <li>
+        <b>O sorteio das rodadas</b>
+        <span>A cada rodada aparece um elenco campeão ou vice de uma edição real. Você leva <b>um</b> jogador dele e encaixa numa vaga livre da sua escalação.</span>
+      </li>
+      <li>
+        <b>Pulos e trocas</b>
+        <span>Não gostou do elenco sorteado? Você tem <b>3 usos</b> pra “Pular seleção” ou “Trocar finalista” (pega o campeão/vice do mesmo ano). O time pulado volta pro fim da fila.</span>
+      </li>
+      <li>
+        <b>Monte os 11</b>
+        <span>Jogador que serve pra mais de uma vaga: toque na vaga desejada. Já escalado: toque nele e depois no destino (ou arraste) pra reposicionar. Acompanhe os overalls de Defesa, Meio e Ataque.</span>
+      </li>
+      <li>
+        <b>Dispute a Copa do Brasil</b>
+        <span>Com os 11 fechados, começa o mata-mata: <b>Oitavas, Quartas e Semi</b> em ida e volta (com vantagem de casa) e a <b>Final</b> em jogo único, em estádio neutro. Empatou no agregado, vai pros pênaltis.</span>
+      </li>
+      <li>
+        <b>Compartilhe no fim</b>
+        <span>Campeão ou eliminado, no final você gera uma imagem com sua escalação e sua campanha pra mandar no WhatsApp.</span>
+      </li>
+    </ol>
+
+    <div class="controls" style="justify-content:center;margin-top:20px;">
+      <button type="button" class="action primary" onclick="startFromWelcome()">Bora montar minha seleção</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="shareModal">
+  <div class="modal-box share-box">
+    <h2>Sua campanha</h2>
+    <p>Salve a imagem ou mande direto no WhatsApp.</p>
+    <div id="shareBody"></div>
+    <div class="controls" style="justify-content:center;margin-top:16px;">
+      <button type="button" class="action" onclick="closeShareCard()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="setupModal">
   <div class="modal-box">
-    <h2>Antes de começar…</h2>
-    <p>Dê um nome pra sua seleção, pro seu estádio, e escolha a formação. Nomes você pode mudar depois no botão “✏️ Nomes” — mas a formação é definitiva, não dá pra trocar depois de começar.</p>
+    <h2 id="setupTitle">Antes de começar…</h2>
+    <p id="setupIntro">Dê um nome pra sua seleção, pro seu estádio, e escolha a formação. Nomes você pode mudar depois no botão “✏️ Alterar nomes” — mas a formação é definitiva, não dá pra trocar depois de começar.</p>
     <label class="config-field">
       <span>Nome da sua seleção</span>
       <input type="text" id="teamNameInput" maxlength="28" placeholder="Sua Seleção" autocomplete="off">
@@ -78,7 +129,9 @@
 
 <!-- data.js precisa ser carregado antes de app.js, pois app.js usa TEAMS -->
 <script src="data.js"></script>
+<script src="sounds.js"></script>
 <script src="cup.js"></script>
 <script src="app.js"></script>
+<script src="share.js"></script>
 </body>
 </html>

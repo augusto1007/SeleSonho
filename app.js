@@ -292,6 +292,7 @@ let state = {
 
 /* ---------- SELEÇÃO DE FORMAÇÃO (só na janela inicial) ---------- */
 let selectedFormationKey = DEFAULT_FORMATION; // seleção temporária, só vira definitiva ao confirmar
+let isRestarting = false; // true quando a janela foi reaberta pra montar uma NOVA seleção
 
 function renderFormationPreview(key){
   const box = document.getElementById("formationPreview");
@@ -344,10 +345,38 @@ function openSetupModal(){
     formationSection.classList.remove("hidden");
     lockedNote.classList.add("hidden");
     selectFormationOption(state.formation || DEFAULT_FORMATION);
-    confirmBtn.textContent = "Começar a montar a seleção";
+    confirmBtn.textContent = isRestarting ? "Começar a nova seleção" : "Começar a montar a seleção";
   }
 
+  /* A mesma janela serve pra três momentos: a estreia, a edição de nomes com
+     o jogo em andamento, e o recomeço (onde a formação volta a ser escolhível). */
+  const title = document.getElementById("setupTitle");
+  const intro = document.getElementById("setupIntro");
+  let titleText, introText;
+  if(state.started){
+    titleText = "Alterar nomes";
+    introText = "Troque o nome da sua seleção ou do seu estádio. A formação foi definida no começo desta seleção e não muda no meio do caminho.";
+  } else if(isRestarting){
+    titleText = "Nova seleção";
+    introText = "Agora dá pra trocar de esquema: escolha a formação da nova seleção e ajuste os nomes se quiser. Depois de começar, a formação trava de novo.";
+  } else {
+    titleText = "Antes de começar…";
+    introText = "Dê um nome pra sua seleção, pro seu estádio, e escolha a formação. Nomes você pode mudar depois no botão “✏️ Alterar nomes” — mas a formação é definitiva, não dá pra trocar depois de começar.";
+  }
+  if(title) title.textContent = titleText;
+  if(intro) intro.textContent = introText;
+
   document.getElementById("setupModal").classList.remove("hidden");
+}
+
+/* "Montar nova seleção" / "Jogar de novo": em vez de recomeçar direto com a
+   mesma formação, reabre a janela inicial com a formação DESTRAVADA, pra o
+   usuário poder trocar de esquema (e de nomes) antes do novo draft. O jogo
+   só recomeça de fato quando ele confirma em confirmSetup(). */
+function restartGame(){
+  state.started = false;      // destrava a escolha de formação
+  isRestarting = true;        // muda só os textos da janela
+  openSetupModal();
 }
 
 function confirmSetup(){
@@ -364,6 +393,7 @@ function confirmSetup(){
 
   if(!state.started){
     state.started = true;
+    isRestarting = false;
     newGame();
   } else if(state.phase === "cup" && typeof cup !== "undefined" && cup){
     renderCupScreen();
@@ -813,7 +843,7 @@ function renderDraft(){
         Isso é raro — reinicie para sortear uma nova ordem.
       </div>
       <div class="controls">
-        <button class="action primary" onclick="newGame()">Recomeçar</button>
+        <button class="action primary" onclick="restartGame()">Recomeçar</button>
       </div>
     `;
     return;
@@ -876,14 +906,20 @@ function renderFinal(card){
       <div class="final-list">${rows}</div>
       <div class="controls" style="justify-content:center;">
         <button class="action primary" onclick="startCup()">🏆 Disputar a Copa do Brasil</button>
-        <button class="action" onclick="newGame()">Jogar de novo</button>
+        <button class="action" onclick="restartGame()">Jogar de novo</button>
       </div>
     </div>
   `;
 }
 
-/* O jogo só é iniciado (newGame) depois que o usuário confirma a janela
-   inicial de nomes em confirmSetup(). Antes disso, a modal fica visível
-   por padrão (ver index.html) cobrindo a tela toda. Aqui só inicializamos
-   os botões de formação e a prévia, sem chamar newGame(). */
-openSetupModal();
+/* Primeira tela é o aviso de boas-vindas (#welcomeModal, visível por padrão
+   no index.html), que explica como o jogo funciona. Ao confirmar ali, o
+   usuário cai na janela de nomes/formação; e só depois de confirmar ESSA
+   janela (confirmSetup) é que o jogo começa de fato (newGame). */
+function startFromWelcome(){
+  document.getElementById("welcomeModal").classList.add("hidden");
+  openSetupModal();
+}
+
+/* Deixa a prévia da formação já montada antes da janela aparecer. */
+selectFormationOption(DEFAULT_FORMATION);

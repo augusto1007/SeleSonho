@@ -62,6 +62,43 @@ const NEUTRAL_STADIUMS = (() => {
 /* ---------- ESTADO DA COPA ---------- */
 let cup = null;
 
+/* ---------- VELOCIDADE DA SIMULAÇÃO (timer em "tempo real") ---------- */
+/* Cada partida agora "roda" minuto a minuto, com um cronômetro, em vez de
+   pular direto pro resultado. O jogador escolhe o ritmo da animação:
+   - lento: cada minuto demora mais, dá pra acompanhar com calma;
+   - rapido: ritmo padrão, ameno;
+   - instantaneo: mantém o comportamento antigo (resultado na hora, sem animação).
+   A escolha fica salva no navegador. */
+const MATCH_SPEED_MS = { lento: 260, rapido: 70 };
+let matchSpeed = (() => {
+  try{
+    const saved = localStorage.getItem("cdb_matchSpeed");
+    if(saved === "lento" || saved === "rapido" || saved === "instantaneo") return saved;
+  }catch(e){}
+  return "rapido";
+})();
+
+function setMatchSpeed(sp){
+  matchSpeed = sp;
+  try{ localStorage.setItem("cdb_matchSpeed", sp); }catch(e){}
+  if(cup && (cup.status === "ready")) renderCupScreen();
+}
+
+function speedSelectHtml(){
+  const opts = [
+    {key:"lento", label:"🐢 Lento"},
+    {key:"rapido", label:"⚡ Rápido"},
+    {key:"instantaneo", label:"⏭️ Instantâneo"},
+  ];
+  return `
+    <div class="speed-select">
+      <span class="speed-select-label">Velocidade da simulação</span>
+      <div class="speed-select-opts">
+        ${opts.map(o => `<button type="button" class="speed-btn${matchSpeed===o.key?" active":""}" onclick="setMatchSpeed('${o.key}')">${o.label}</button>`).join("")}
+      </div>
+    </div>`;
+}
+
 function stadiumFor(teamName){
   return STADIUMS[teamName] || {name:`Estádio Municipal de ${teamName}`, city:teamName};
 }
@@ -149,18 +186,94 @@ function pickScorer(players){
 
 /* Sorteia `numGoals` eventos de gol (autor + minuto de 1 a 90, sem repetir
    minuto), já ordenados cronologicamente. */
+const FIRST_HALF_END = 45;
+const FIRST_HALF_ADDED = 5;
+const SECOND_HALF_END = 90;
+const SECOND_HALF_ADDED = 6;
+const MATCH_END_MINUTE = SECOND_HALF_END + SECOND_HALF_ADDED;
+
+/* Converte o minuto interno da simulação para o formato de futebol.
+   Ex.: 48 vira 45+3 e 94 vira 90+4. */
+function formatMatchMinute(minute){
+  if(minute > FIRST_HALF_END && minute <= FIRST_HALF_END + FIRST_HALF_ADDED) return `45+${minute-FIRST_HALF_END}`;
+  if(minute > SECOND_HALF_END) return `90+${minute-SECOND_HALF_END}`;
+  return `${minute}`;
+}
+
+/* Sorteia o minuto dos gols incluindo acréscimos nos dois tempos. */
+function randomMatchMinute(){
+  const roll = Math.random();
+  if(roll < 0.055) return 46 + Math.floor(Math.random()*FIRST_HALF_ADDED); // 45+1 até 45+5
+  if(roll < 0.125) return 91 + Math.floor(Math.random()*SECOND_HALF_ADDED); // 90+1 até 90+6
+  let minute;
+  do{ minute = 1 + Math.floor(Math.random()*90); }
+  while(minute > 45 && minute <= 50); // evita faixa interna dos acréscimos do 1º tempo
+  return minute;
+}
+
 function generateGoalEvents(numGoals, players){
   const usedMinutes = new Set();
   const events = [];
   for(let i=0; i<numGoals; i++){
     let minute;
-    do{ minute = 1 + Math.floor(Math.random()*90); } while(usedMinutes.has(minute));
+    do{ minute = randomMatchMinute(); } while(usedMinutes.has(minute));
     usedMinutes.add(minute);
     events.push({minute, name: pickScorer(players)});
   }
   events.sort((a,b) => a.minute - b.minute);
   return events;
 }
+
+/* Mensagens dramáticas pós-jogo. Não são sorteadas apenas pelo placar:
+   levam em conta virada, empate no fim, goleada, remontada no agregado e
+   decisão por pênaltis para deixar a campanha mais viva. */
+function buildMatchNarrative(result, userName, oppName, context={}){
+  const events = [
+    ...result.userEvents.map(e=>({...e,mine:true})),
+    ...result.oppEvents.map(e=>({...e,mine:false}))
+  ].sort((a,b)=>a.minute-b.minute);
+  let ug=0, og=0, maxDeficit=0, hadLead=false, lateEqualizer=false, leadChanges=0, lastLeader=0;
+  events.forEach(e=>{
+    if(e.mine) ug++; else og++;
+    maxDeficit=Math.max(maxDeficit, og-ug);
+    const leader=Math.sign(ug-og);
+    if(leader!==0 && lastLeader!==0 && leader!==lastLeader) leadChanges++;
+    if(leader!==0) lastLeader=leader;
+    if(ug>og) hadLead=true;
+    if(e.mine && ug===og && e.minute>=85) lateEqualizer=true;
+  });
+  const msgs=[];
+  const won=result.userGoals>result.oppGoals;
+  const lost=result.userGoals<result.oppGoals;
+  const draw=!won&&!lost;
+  const score=`${result.userGoals} x ${result.oppGoals}`;
+  if(won && maxDeficit>=2) msgs.push(`🔥 REMONTADA HISTÓRICA! ${userName} chegou a ficar ${maxDeficit} gols atrás, reagiu e virou para ${score}.`);
+  else if(won && maxDeficit===1) msgs.push(`🔄 Que reação! Depois de sair atrás, ${userName} buscou a virada e venceu por ${score}.`);
+  if(won && result.userGoals-result.oppGoals>=3) msgs.push(`🚀 Atropelo! ${userName} dominou o jogo e aplicou um sonoro ${score}.`);
+  if(won && result.userEvents.some(e=>e.minute>90)) msgs.push(`⏱️ GOL NOS ACRÉSCIMOS! ${userName} decidiu o jogo no apagar das luzes.`);
+  if(lost && result.oppEvents.some(e=>e.minute>90)) msgs.push(`💔 Drama até o fim: ${oppName} encontrou o gol decisivo já nos acréscimos.`);
+  if(draw && lateEqualizer) msgs.push(`⏱️ No último suspiro! ${userName} arrancou o empate e manteve a decisão completamente aberta.`);
+  if(draw && events.length===0) msgs.push(`🧱 Jogo travado do início ao fim: ninguém conseguiu furar as defesas. A decisão fica para os pênaltis.`);
+  if(leadChanges>=2) msgs.push(`🎢 Um verdadeiro roteiro de cinema: o placar mudou de lado e a torcida viveu cada minuto no limite.`);
+  if(!msgs.length){
+    msgs.push(won ? `⚽ Vitória importante! ${userName} foi mais eficiente e fechou a partida em ${score}.`
+      : lost ? `😤 ${userName} lutou até o fim, mas ${oppName} levou a melhor por ${score}.`
+      : `🤝 Tudo igual: ${score}. Nenhum dos dois lados conseguiu construir vantagem no tempo normal.`);
+  }
+  if(context.aggregateBefore){
+    const a=context.aggregateBefore;
+    const beforeDiff=a.user-a.opp, afterDiff=(a.user+result.userGoals)-(a.opp+result.oppGoals);
+    if(beforeDiff<0 && afterDiff>0) msgs.unshift(`🏆 VIRADA NO AGREGADO! ${userName} estava em desvantagem e conseguiu uma classificação épica.`);
+    else if(beforeDiff<0 && afterDiff===0) msgs.unshift(`😱 EMPATE NO AGREGADO! Depois de buscar o resultado, a vaga será decidida nos pênaltis.`);
+  }
+  if(context.penalties){
+    msgs.unshift(context.penalties.winnerUser
+      ? `🥅 NOS PÊNALTIS! ${userName} suportou a pressão e garantiu a classificação.`
+      : `🥅 NOS PÊNALTIS! Depois de muito equilíbrio, a disputa terminou em favor de ${oppName}.`);
+  }
+  return msgs.slice(0,3);
+}
+
 
 /* Normaliza o elenco titular do usuário (state.slots) e o elenco do
    adversário (opp.players, vindo de data.js) pro mesmo formato {name,pos,ovr}.
@@ -192,16 +305,43 @@ function penaltyChance(ovr){
   return Math.max(0.55, Math.min(0.88, 0.66 + (ovr - 75) * 0.004));
 }
 
+/* Sorteia a ordem dos batedores de um time, ponderando pela posição e pelo
+   overall (mesmo peso usado pra autoria dos gols — quem mais marca é quem
+   mais bate pênalti). É um sorteio SEM reposição: cada jogador só reaparece
+   depois que todos os outros já bateram uma vez (ciclo, igual regra real
+   de "todo mundo bate antes de repetir" na morte súbita). */
+function pickPenaltyOrder(players){
+  const pool = players.length ? players.slice() : [{name:"Jogador", pos:"CA", ovr:70}];
+  let remaining = pool.map(pl => ({
+    name: pl.name,
+    w: (SCORER_WEIGHT[pl.pos] || 1) * (0.6 + pl.ovr/100),
+  }));
+  const order = [];
+  while(remaining.length){
+    const total = remaining.reduce((a,b)=>a+b.w, 0);
+    let r = Math.random() * total, idx = 0;
+    for(; idx<remaining.length-1; idx++){ r -= remaining[idx].w; if(r<=0) break; }
+    order.push(remaining[idx].name);
+    remaining.splice(idx, 1);
+  }
+  return order;
+}
+
 /* Disputa de pênaltis com a regra real de desempate: cada time bate até 5
    cobranças, mas a disputa termina assim que o resultado fica matematicamente
    definido (não precisa bater as 5 se o time de trás não alcança mais o
    outro nem com todas as cobranças restantes). Se seguir empatado depois
    das 5 cobranças de cada, vai pra morte súbita (1 cobrança por vez, os
-   dois batem a cada rodada até haver um vencedor). */
-function simulatePenalties(userOvr, oppOvr){
+   dois batem a cada rodada até haver um vencedor). userPlayers/oppPlayers
+   já normalizados como {name,pos,ovr} — usados só pra sortear quem bate
+   cada cobrança (o autor/"batedor"). */
+function simulatePenalties(userOvr, oppOvr, userPlayers, oppPlayers){
   const pu = penaltyChance(userOvr), po = penaltyChance(oppOvr);
+  const userTakers = pickPenaltyOrder(userPlayers || []);
+  const oppTakers  = pickPenaltyOrder(oppPlayers || []);
+  const nextTaker = (order, taken) => order[taken % order.length];
   let userScore = 0, oppScore = 0, userTaken = 0, oppTaken = 0, round = 0;
-  const sequence = []; // {round, side:'user'|'opp', makes, userScore, oppScore}
+  const sequence = []; // {round, side:'user'|'opp', makes, name, userScore, oppScore}
 
   const decided = () => {
     const userRemaining = Math.max(0, 5 - userTaken);
@@ -213,32 +353,36 @@ function simulatePenalties(userOvr, oppOvr){
   while((userTaken < 5 || oppTaken < 5) && !decided()){
     round++;
     if(userTaken < 5){
+      const name = nextTaker(userTakers, userTaken);
       userTaken++;
       const makes = Math.random() < pu;
       if(makes) userScore++;
-      sequence.push({round, side:"user", makes, userScore, oppScore});
+      sequence.push({round, side:"user", makes, name, userScore, oppScore});
       if(decided()) break;
     }
     if(oppTaken < 5){
+      const name = nextTaker(oppTakers, oppTaken);
       oppTaken++;
       const makes = Math.random() < po;
       if(makes) oppScore++;
-      sequence.push({round, side:"opp", makes, userScore, oppScore});
+      sequence.push({round, side:"opp", makes, name, userScore, oppScore});
     }
   }
 
   // Morte súbita, se seguir empatado depois da fase regular.
   while(userScore === oppScore && round < 30){
     round++;
+    const uName = nextTaker(userTakers, userTaken);
     userTaken++;
     const uMakes = Math.random() < pu;
     if(uMakes) userScore++;
-    sequence.push({round, side:"user", makes:uMakes, userScore, oppScore});
+    sequence.push({round, side:"user", makes:uMakes, name:uName, userScore, oppScore});
 
+    const oName = nextTaker(oppTakers, oppTaken);
     oppTaken++;
     const oMakes = Math.random() < po;
     if(oMakes) oppScore++;
-    sequence.push({round, side:"opp", makes:oMakes, userScore, oppScore});
+    sequence.push({round, side:"opp", makes:oMakes, name:oName, userScore, oppScore});
   }
 
   return {userScore, oppScore, winnerUser: userScore > oppScore, sequence};
@@ -284,6 +428,55 @@ function playLeg(){
   const res = simulateMatch(cup.userOvr, opp._ovr, userHome, normalizedUserSquad(), normalizedOppSquad(opp));
   cup.lastLegResult = {...res, stadium: currentStadium(), userHome, opponent: opp};
   cup.legResults.push(res);
+
+  if(matchSpeed === "instantaneo"){
+    cup.status = "played";
+    renderCupScreen();
+  } else {
+    startLiveMatch();
+  }
+}
+
+/* ---------- CRONÔMETRO AO VIVO ---------- */
+/* Roda a partida minuto a minuto (1 a 90), revelando os gols no minuto em
+   que aconteceram, como se fosse em tempo real. O resultado final já está
+   todo sorteado (cup.lastLegResult) — a animação só vai "revelando" os
+   eventos conforme o relógio avança, pra dar a sensação de jogo ao vivo. */
+function startLiveMatch(){
+  const r = cup.lastLegResult;
+  const allEvents = [
+    ...r.userEvents.map(e => ({...e, mine:true})),
+    ...r.oppEvents.map(e => ({...e, mine:false})),
+  ].sort((a,b) => a.minute - b.minute);
+
+  cup.status = "playing";
+  cup.live = { minute:0, userGoals:0, oppGoals:0, revealed:[], pending:allEvents, timer:null };
+  getAudioCtx(); // "destrava" o áudio já no clique que inicia a partida
+  renderCupScreen();
+
+  const tickMs = MATCH_SPEED_MS[matchSpeed] || MATCH_SPEED_MS.rapido;
+  cup.live.timer = setInterval(() => {
+    if(!cup.live) return; // já foi pulado/encerrado
+    cup.live.minute++;
+    while(cup.live.pending.length && cup.live.pending[0].minute <= cup.live.minute){
+      const ev = cup.live.pending.shift();
+      cup.live.revealed.push(ev);
+      if(ev.mine){ cup.live.userGoals++; playCheer(false); }
+      else { cup.live.oppGoals++; playLament(false); }
+    }
+    if(cup.live.minute >= MATCH_END_MINUTE){
+      clearInterval(cup.live.timer);
+      cup.live = null;
+      cup.status = "played";
+    }
+    renderCupScreen();
+  }, tickMs);
+}
+
+/* Pula direto pro resultado final, encerrando o cronômetro em andamento. */
+function skipLiveMatch(){
+  if(cup.live && cup.live.timer) clearInterval(cup.live.timer);
+  cup.live = null;
   cup.status = "played";
   renderCupScreen();
 }
@@ -311,14 +504,17 @@ function finishRound(){
   }
   let penalties = null, advanced;
   if(aggUser === aggOpp){
-    penalties = simulatePenalties(cup.userOvr, opp._ovr);
+    penalties = simulatePenalties(cup.userOvr, opp._ovr, normalizedUserSquad(), normalizedOppSquad(opp));
     advanced = penalties.winnerUser;
   } else {
     advanced = aggUser > aggOpp;
   }
 
+  const aggregateBefore = !isFinalRound() && cup.legResults.length===2
+    ? {user:cup.legResults[0].userGoals, opp:cup.legResults[0].oppGoals} : null;
+  const narrative = buildMatchNarrative(cup.lastLegResult, getTeamName(), opp.team+" ("+opp.year+")", {aggregateBefore, penalties});
   cup.roundHistory.push({
-    roundIdx: cup.roundIdx, opponent: opp, aggUser, aggOpp, penalties, advanced,
+    roundIdx: cup.roundIdx, opponent: opp, aggUser, aggOpp, penalties, advanced, narrative,
     legs: cup.legResults.slice(), stadium: isFinalRound() ? cup.finalStadium : null,
   });
   cup.legResults = [];
@@ -326,11 +522,14 @@ function finishRound(){
 
   if(!advanced){
     cup.status = isFinalRound() ? "runnerup" : "eliminated";
+    playLament(true);
   } else if(isFinalRound()){
     cup.status = "champion";
+    playCheer(true);
   } else {
     cup.roundIdx++;
     cup.status = "roundOver";
+    playCheer(true);
   }
   renderCupScreen();
 }
@@ -356,7 +555,10 @@ function penaltiesSumulaHtml(penalties, userTeamName, oppTeamName){
     rounds.get(e.round)[e.side] = e;
   });
   const markHtml = entry => entry
-    ? `<span class="pen-mark ${entry.makes?"made":"missed"}">${entry.makes?"⚽":"❌"}</span>`
+    ? `<span class="pen-mark ${entry.makes?"made":"missed"}">
+         <span class="pen-mark-icon">${entry.makes?"⚽":"❌"}</span>
+         <span class="pen-taker">${entry.name}</span>
+       </span>`
     : `<span class="pen-mark pending">—</span>`;
 
   const rows = Array.from(rounds.entries()).map(([round, r]) => {
@@ -404,7 +606,7 @@ function sumulaHtml(userEvents, oppEvents, userTeamName, oppTeamName, title){
   const body = combined.length
     ? combined.map(e => `
         <div class="sumula-event ${e.mine?"mine":"their"}">
-          <span class="sumula-min">${e.minute}'</span>
+          <span class="sumula-min">${formatMatchMinute(e.minute)}'</span>
           <span class="sumula-ball">⚽</span>
           <span class="sumula-name">${e.name}</span>
           <span class="sumula-team">${e.team}</span>
@@ -416,6 +618,11 @@ function sumulaHtml(userEvents, oppEvents, userTeamName, oppTeamName, title){
       <div class="sumula-title">📋 Súmula${title?` — ${title}`:""}</div>
       <div class="sumula-list">${body}</div>
     </div>`;
+}
+
+function narrativeHtml(messages){
+  if(!messages || !messages.length) return "";
+  return `<div class="match-narrative"><div class="match-narrative-title">🎙️ Como foi o jogo</div>${messages.map(m=>`<div class="match-narrative-line">${m}</div>`).join("")}</div>`;
 }
 
 function bracketHeaderHtml(){
@@ -462,8 +669,10 @@ function renderCupScreen(){
           : `${getTeamName()} perdeu a final ${scoreStr(finalHist.aggUser,finalHist.aggOpp)}${finalHist.penalties?` (pênaltis ${finalHist.penalties.userScore}-${finalHist.penalties.oppScore})`:""} para ${finalHist.opponent.team} ${finalHist.opponent.year}, em ${finalHist.stadium.name}.`}
         </p>
         ${legsSumulaHtml(finalHist)}
+        ${narrativeHtml(finalHist.narrative)}
         <div class="controls" style="justify-content:center;">
-          <button class="action primary" onclick="newGame()">Montar nova seleção</button>
+          <button class="action primary" onclick="openShareCard()">📲 Compartilhar campanha</button>
+          <button class="action" onclick="restartGame()">Montar nova seleção</button>
         </div>
       </div>
     `;
@@ -479,8 +688,10 @@ function renderCupScreen(){
         <h2>Eliminado nas ${ROUND_NAMES[h.roundIdx]}</h2>
         <p>${getTeamName()} caiu diante de ${h.opponent.team} ${h.opponent.year} (overall ${h.opponent._ovr}), agregado ${scoreStr(h.aggUser,h.aggOpp)}${h.penalties?` — pênaltis ${h.penalties.userScore}-${h.penalties.oppScore}`:""}.</p>
         ${legsSumulaHtml(h)}
+        ${narrativeHtml(h.narrative)}
         <div class="controls" style="justify-content:center;">
-          <button class="action primary" onclick="newGame()">Montar nova seleção</button>
+          <button class="action primary" onclick="openShareCard()">📲 Compartilhar campanha</button>
+          <button class="action" onclick="restartGame()">Montar nova seleção</button>
         </div>
       </div>
     `;
@@ -496,6 +707,7 @@ function renderCupScreen(){
         <h2>Classificado!</h2>
         <p>${getTeamName()} superou ${h.opponent.team} ${h.opponent.year}, agregado ${scoreStr(h.aggUser,h.aggOpp)}${h.penalties?` — pênaltis ${h.penalties.userScore}-${h.penalties.oppScore}`:""}.</p>
         ${legsSumulaHtml(h)}
+        ${narrativeHtml(h.narrative)}
         <div class="controls" style="justify-content:center;">
           <button class="action primary" onclick="proceedNextRound()">Avançar para ${ROUND_NAMES[cup.roundIdx]}</button>
         </div>
@@ -505,6 +717,53 @@ function renderCupScreen(){
   }
 
   const legLabel = isFinalRound() ? "Jogo único" : (cup.legIdx===0 ? "Jogo 1 de 2 (Ida)" : "Jogo 2 de 2 (Volta)");
+
+  if(cup.status === "playing"){
+    const r = cup.lastLegResult;
+    const live = cup.live;
+    const homeIsUser = r.userHome !== false;
+    const homeName = homeIsUser ? getTeamName() : opp.team+"("+opp.year+")";
+    const awayName = homeIsUser ? opp.team+"("+opp.year+")" : getTeamName();
+    const homeGoals = homeIsUser ? live.userGoals : live.oppGoals;
+    const awayGoals = homeIsUser ? live.oppGoals : live.userGoals;
+    const pct = Math.min(100, Math.round((live.minute/MATCH_END_MINUTE)*100));
+    const liveMinuteLabel = formatMatchMinute(live.minute);
+    const liveEventsHtml = live.revealed.length
+      ? live.revealed.map(e => `
+          <div class="sumula-event ${e.mine?"mine":"their"}">
+            <span class="sumula-min">${formatMatchMinute(e.minute)}'</span>
+            <span class="sumula-ball">⚽</span>
+            <span class="sumula-name">${e.name}</span>
+            <span class="sumula-team">${e.mine?getTeamName():opp.team+"("+opp.year+")"}</span>
+          </div>`).join("")
+      : `<div class="sumula-empty">Bola rolando, ninguém balançou as redes ainda…</div>`;
+
+    card.innerHTML = `
+      ${bracketHeaderHtml()}
+      <div class="match-center">
+        <div class="round-title">${ROUND_NAMES[cup.roundIdx]} · ${legLabel}</div>
+        ${venueTagHtml(r.stadium, r.userHome)}
+        <div class="live-clock">
+          <span class="live-dot"></span>
+          <span class="live-minute">${liveMinuteLabel}'</span>
+          <div class="live-bar"><div class="live-bar-fill" style="width:${pct}%"></div></div>
+        </div>
+        <div class="vs-box">
+          <div class="vs-team"><div class="vs-name">${homeName}</div></div>
+          <div class="vs-score">${homeGoals} <span>x</span> ${awayGoals}</div>
+          <div class="vs-team"><div class="vs-name">${awayName}</div></div>
+        </div>
+        <div class="sumula">
+          <div class="sumula-title">📋 Súmula ao vivo</div>
+          <div class="sumula-list">${liveEventsHtml}</div>
+        </div>
+        <div class="controls" style="justify-content:center;">
+          <button class="action" onclick="skipLiveMatch()">⏭️ Pular pro resultado</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
 
   if(cup.status === "played"){
     const r = cup.lastLegResult;
@@ -538,6 +797,7 @@ function renderCupScreen(){
         </div>
         ${aggNote}
         ${sumulaHtml(r.userEvents, r.oppEvents, getTeamName(), opp.team+"("+opp.year+")")}
+        ${narrativeHtml(buildMatchNarrative(r, getTeamName(), opp.team+" ("+opp.year+")"))}
         <div class="controls" style="justify-content:center;">
           <button class="action primary" onclick="continueCup()">Continuar</button>
         </div>
@@ -560,6 +820,7 @@ function renderCupScreen(){
         <div class="vs-score">?<span>x</span>?</div>
         <div class="vs-team"><div class="vs-name">${userHome===false? getTeamName() : opp.team+"("+opp.year+")"}</div><div class="vs-ovr">${userHome===false? cup.userOvr : opp._ovr}</div></div>
       </div>
+      ${speedSelectHtml()}
       <div class="controls" style="justify-content:center;">
         <button class="action primary" onclick="playLeg()">Simular jogo</button>
       </div>
