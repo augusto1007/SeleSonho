@@ -361,7 +361,7 @@ const TEAMS = [
                 { n: "Alex Sandro", p: ["LE","ME"], ovr: 76 },
                 { n: "Arouca", p: ["VOL"], ovr: 79 },
                 { n: "Wesley", p: ["VOL","MC"], ovr: 78 },
-                { n: "Paulo Henrique Ganso", p: ["MEI","MC"], ovr: 86 },
+                { n: "Ganso", p: ["MEI","MC"], ovr: 86 },
                 { n: "Robinho", p: ["MEI","MD","ME"], ovr: 85 },
                 { n: "André", p: ["CA"], ovr: 78 },
                 { n: "Neymar", p: ["PE","MEI","PD"], ovr: 90 }
@@ -488,8 +488,8 @@ const TEAMS = [
             players: [
                 { n: "Marcelo Grohe", p: ["GOL"], ovr: 83 },
                 { n: "Edílson", p: ["LD","MD"], ovr: 76 },
-                { n: "Pedro Geromel", p: ["ZAG"], ovr: 84 },
-                { n: "Walter Kannemann", p: ["ZAG"], ovr: 82 },
+                { n: "P. Geromel", p: ["ZAG"], ovr: 84 },
+                { n: "W. Kannemann", p: ["ZAG"], ovr: 82 },
                 { n: "Marcelo Oliveira", p: ["LE","ME"], ovr: 73 },
                 { n: "Maicon", p: ["VOL","MC"], ovr: 82 },
                 { n: "Walace", p: ["VOL","MC"], ovr: 78 },
@@ -558,7 +558,7 @@ const TEAMS = [
                 { n: "Robson Bambu", p: ["ZAG"], ovr: 73 },
                 { n: "Márcio Azevedo", p: ["LE","ME"], ovr: 77 },
                 { n: "Wellington", p: ["VOL","MC"], ovr: 77 },
-                { n: "Bruno Guimarães", p: ["MC","VOL"], ovr: 84 },
+                { n: "B. Guimarães", p: ["MC","VOL"], ovr: 84 },
                 { n: "Lucho González", p: ["MC","MEI"], ovr: 80 },
                 { n: "Nikão", p: ["MEI","MD","ME"], ovr: 82 },
                 { n: "Rony", p: ["PE","PD","CA"], ovr: 82 },
@@ -626,9 +626,9 @@ const TEAMS = [
                 { n: "João Gomes", p: ["VOL","MC"], ovr: 81 },
                 { n: "Thiago Maia", p: ["VOL","MC"], ovr: 80 },
                 { n: "Everton Ribeiro", p: ["MEI","MD","MC"], ovr: 85 },
-                { n: "De Arrascaeta", p: ["MEI","ME","MC"], ovr: 90 },
+                { n: "Arrascaeta", p: ["MEI","ME","MC"], ovr: 90 },
                 { n: "Pedro", p: ["CA"], ovr: 88 },
-                { n: "Gabriel Barbosa", p: ["CA","MEI"], ovr: 86 }
+                { n: "Gabigol", p: ["CA","MEI"], ovr: 86 }
             ]
         },
 
@@ -667,9 +667,9 @@ const TEAMS = [
                 { n: "Léo Ortiz", p: ["ZAG"], ovr: 84 },
                 { n: "Léo Pereira", p: ["ZAG"], ovr: 84 },
                 { n: "Alex Sandro", p: ["LE","ME"], ovr: 82 },
-                { n: "Erick Pulgar", p: ["VOL"], ovr: 82 },
+                { n: "E. Pulgar", p: ["VOL"], ovr: 82 },
                 { n: "Gerson", p: ["VOL","MC"], ovr: 84 },
-                { n: "De Arrascaeta", p: ["MEI","ME","MC"], ovr: 90 },
+                { n: "Arrascaeta", p: ["MEI","ME","MC"], ovr: 90 },
                 { n: "Gonzalo Plata", p: ["PD","MEI","PE"], ovr: 79 },
                 { n: "Michael", p: ["PE","PD","MEI"], ovr: 81 },
                 { n: "Bruno Henrique", p: ["PE","PD","CA"], ovr: 84 }
@@ -692,7 +692,7 @@ const TEAMS = [
                 { n: "Raniele", p: ["VOL","MC"], ovr: 77 },
                 { n: "José Martínez", p: ["VOL","MC"], ovr: 79 },
                 { n: "Rodrigo Garro", p: ["MEI","MC"], ovr: 84 },
-                { n: "Memphis Depay", p: ["CA","MEI"], ovr: 86 },
+                { n: "Memphis", p: ["CA","MEI"], ovr: 86 },
                 { n: "Yuri Alberto", p: ["CA"], ovr: 82 },
                 { n: "André Carrillo", p: ["PD","PE","MD","ME"], ovr: 79 }
             ]
@@ -967,7 +967,7 @@ const TEAMS = [
                 { n: "Wagner Diniz", p: ["LD","MD"], ovr: 74 },
                 { n: "Fábio Braz", p: ["ZAG"], ovr: 72 },
                 { n: "Jorge Luiz", p: ["ZAG"], ovr: 74 },
-                { n: "Diego", p: ["GOL"], ovr: 73 },
+                { n: "Diego", p: ["LE"], ovr: 73 },
                 { n: "Andrade", p: ["VOL","MC"], ovr: 76 },
                 { n: "Ygor", p: ["VOL","MC"], ovr: 71 },
                 { n: "Morais", p: ["MEI","MC"], ovr: 77 },
@@ -1109,7 +1109,7 @@ const TEAMS = [
                 { n: "Willian Farias", p: ["VOL","MC"], ovr: 75 },
                 { n: "Sérgio Manoel", p: ["MC","MEI"], ovr: 73 },
                 { n: "Rafinha", p: ["MEI","MD","ME"], ovr: 83 },
-                { n: "Éverton Ribeiro", p: ["MEI","MD","MC"], ovr: 80 },
+                { n: "Everton Ribeiro", p: ["MEI","MD","MC"], ovr: 80 },
                 { n: "Roberto", p: ["CA"], ovr: 75 },
                 { n: "Éverton Costa", p: ["CA","MEI"], ovr: 76 }
             ]
@@ -1132,7 +1132,7 @@ const TEAMS = [
                 { n: "Deivid", p: ["VOL","MC"], ovr: 75 },
                 { n: "Zezinho", p: ["VOL","MC"], ovr: 72 },
                 { n: "Paulo Baier", p: ["MEI","MD","MC"], ovr: 80 },
-                { n: "Felipe", p: ["GOL"], ovr: 77 },
+                { n: "Felipe", p: ["MEI","MC"], ovr: 77 },
                 { n: "Marcelo Cirino", p: ["PD","MEI","MD"], ovr: 79 },
                 { n: "Éderson", p: ["CA","PD"], ovr: 78 }
             ]
@@ -1287,8 +1287,8 @@ const TEAMS = [
             players: [
                 { n: "Paulo Victor", p: ["GOL"], ovr: 77 },
                 { n: "Victor Ferraz", p: ["LD","MD"], ovr: 78 },
-                { n: "Geromel", p: ["ZAG"], ovr: 84 },
-                { n: "Kannemann", p: ["ZAG"], ovr: 83 },
+                { n: "P. Geromel", p: ["ZAG"], ovr: 84 },
+                { n: "W. Kannemann", p: ["ZAG"], ovr: 83 },
                 { n: "Diogo Barbosa", p: ["LE","ME"], ovr: 77 },
                 { n: "Maicon", p: ["VOL","MC"], ovr: 81 },
                 { n: "Matheus Henrique", p: ["VOL","MC"], ovr: 80 },
@@ -1359,7 +1359,7 @@ const TEAMS = [
                 { n: "Fabrício Bruno", p: ["ZAG"], ovr: 82 },
                 { n: "Léo Pereira", p: ["ZAG"], ovr: 82 },
                 { n: "Ayrton Lucas", p: ["LE","ME"], ovr: 81 },
-                { n: "Pulgar", p: ["VOL","MC"], ovr: 82 },
+                { n: "E. Pulgar", p: ["VOL","MC"], ovr: 82 },
                 { n: "Thiago Maia", p: ["VOL","MC"], ovr: 79 },
                 { n: "Everton Ribeiro", p: ["MEI","MD","MC"], ovr: 86 },
                 { n: "Arrascaeta", p: ["MEI","ME","MC"], ovr: 91 },
@@ -1403,12 +1403,12 @@ const TEAMS = [
                 { n: "Léo Jardim", p: ["GOL"], ovr: 82 },
                 { n: "Puma Rodríguez", p: ["LD","MD"], ovr: 76 },
                 { n: "Robert Renan", p: ["ZAG"], ovr: 77 },
-                { n: "Cuesta", p: ["ZAG"], ovr: 78 },
+                { n: "Carlos Cuesta", p: ["ZAG"], ovr: 78 },
                 { n: "Paulo Henrique", p: ["LE","ME"], ovr: 77 },
                 { n: "Thiago Mendes", p: ["VOL","MC"], ovr: 78 },
                 { n: "Tchê Tchê", p: ["MC","VOL"], ovr: 77 },
                 { n: "Rayan", p: ["MEI","PD","CA"], ovr: 75 },
-                { n: "Philippe Coutinho", p: ["MEI","MC"], ovr: 82 },
+                { n: "Coutinho", p: ["MEI","MC"], ovr: 82 },
                 { n: "Hinestroza", p: ["PD","PE","MEI"], ovr: 76 },
                 { n: "Vegetti", p: ["CA"], ovr: 83 }
             ]

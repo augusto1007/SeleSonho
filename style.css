@@ -220,6 +220,63 @@
   }
   .locked-note span{ color:var(--gold-bright); font-weight:800; }
 
+  /* ANÚNCIOS — placeholders visuais. Cada .ad-slot tem um data-ad-slot
+     (identificador) pra você trocar depois pelo <ins>/<div> do seu
+     provedor de anúncios (Google AdSense, Ezoic, etc.) sem mexer no
+     resto do layout — só substituir o conteúdo interno do elemento. */
+  .ad-slot{
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:repeating-linear-gradient(45deg, var(--panel), var(--panel) 10px, var(--panel-2) 10px, var(--panel-2) 20px);
+    border:1px dashed rgba(224,177,60,.35);
+    border-radius:10px;
+    color:var(--ink-dim);
+    margin: 0 0 22px;
+  }
+  .ad-slot.has-ad{
+    background:none;
+    border-style:solid;
+  }
+  .ad-slot.has-ad .ad-slot-label{
+    display:none;
+  }
+  .ad-slot-img{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .ad-slot-label{
+    font-size:12px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    background:rgba(0,0,0,.25);
+    padding:4px 10px;
+    border-radius:6px;
+  }
+  .ad-slot-top, .ad-slot-bottom{
+    width:100%;
+    max-width:728px;
+    height:90px;
+    margin-left:auto;
+    margin-right:auto;
+  }
+  .ad-slot-rect{
+    width:100%;
+    max-width:300px;
+    height:250px;
+    margin:18px auto 0;
+  }
+  @media (max-width:480px){
+    .ad-slot-top, .ad-slot-bottom{height:60px;}
+  }
+
   .layout{
     display:grid;
     grid-template-columns: 1.05fr 1fr;
@@ -888,6 +945,55 @@
     padding:0 6px;
   }
   .vs-score span{ color:var(--ink-dim); font-size:20px; margin:0 4px; }
+
+  .sector-matchup{
+    margin:10px 0 4px;
+    padding:10px 12px;
+    border-radius:12px;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.08);
+  }
+  .sector-matchup-title{
+    text-align:center;
+    font-size:12px;
+    font-weight:800;
+    color:var(--ink-dim);
+    letter-spacing:.02em;
+    margin-bottom:8px;
+  }
+  .sector-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:5px 0;
+  }
+  .sector-row + .sector-row{ border-top:1px solid rgba(255,255,255,.06); }
+  .sector-val{
+    flex:0 0 34px;
+    text-align:center;
+    font-weight:800;
+    font-size:15px;
+    color:var(--ink-dim);
+  }
+  .sector-row.edge-mine .sector-val.mine{ color:#7fd88f; }
+  .sector-row.edge-rival .sector-val.rival{ color:var(--danger); }
+  .sector-mid{
+    flex:1;
+    text-align:center;
+    line-height:1.2;
+  }
+  .sector-lbl{
+    display:block;
+    font-size:12px;
+    font-weight:800;
+    color:var(--ink);
+  }
+  .sector-note{
+    display:block;
+    font-size:10px;
+    color:var(--ink-dim);
+    margin-top:1px;
+  }
 
   .agg-label{
     text-align:center;

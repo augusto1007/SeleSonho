@@ -1,0 +1,19 @@
+PASTA DE IMAGENS DOS ANÚNCIOS
+===============================
+
+Coloque aqui os arquivos de imagem com EXATAMENTE estes nomes
+(o código já procura por eles automaticamente):
+
+  topo.jpg        -> banner do topo (728 x 90 px)
+  retangulo.jpg   -> retângulo lateral (300 x 250 px)
+  rodape.jpg      -> banner do rodapé (728 x 90 px)
+
+Se algum arquivo não existir, o site continua mostrando o
+placeholder "Anuncie aqui" no lugar dele normalmente — nada quebra.
+
+Pode usar .jpg, .png ou .webp: só troque a extensão no atributo
+"src" da tag <img> correspondente, dentro de index.html
+(procure por ads/topo, ads/retangulo, ads/rodape).
+
+Dica de tamanho de arquivo: mantenha cada imagem abaixo de ~300KB
+pra não pesar o carregamento da página.

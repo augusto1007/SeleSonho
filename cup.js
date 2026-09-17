@@ -110,9 +110,12 @@ function primaryPos(p){
   return Array.isArray(p) ? p[0] : p;
 }
 
-/* Overall de um elenco qualquer, agrupando por Defesa/Meio/Ataque
-   (mesma metodologia usada pra Seleção dos Sonhos, pra comparação justa) */
-function squadOverall(players){
+/* Overall POR SETOR de um elenco qualquer (Defesa/Meio/Ataque), mesma
+   metodologia usada pra Seleção dos Sonhos, pra comparação justa. Usado
+   tanto pra mostrar o "Overall" combinado quanto — o que importa de
+   verdade pra simulação — pra confrontar setor contra setor (ataque de
+   um time vs defesa do outro, meio-campo vs meio-campo). */
+function squadSectors(players){
   const g = {Defesa:[], Meio:[], Ataque:[]};
   players.forEach(p=>{
     const pos = primaryPos(p.p);
@@ -120,21 +123,33 @@ function squadOverall(players){
     else if(pos==="VOL"||pos==="MC"||pos==="MD"||pos==="ME"||pos==="MEI") g.Meio.push(p.ovr);
     else g.Ataque.push(p.ovr);
   });
-  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
-  return Math.floor((avg(g.Defesa) + avg(g.Meio) + avg(g.Ataque)) / 3);
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 60; // 60 = fallback neutro se o setor ficar vazio
+  return {Defesa: avg(g.Defesa), Meio: avg(g.Meio), Ataque: avg(g.Ataque)};
 }
 
-function userOverall(){
+function squadOverall(players){
+  const s = squadSectors(players);
+  return Math.floor((s.Defesa + s.Meio + s.Ataque) / 3);
+}
+
+/* Setores do usuário, na mesma forma {Defesa,Meio,Ataque} — lidos direto
+   da escalação (state.slots), pra alimentar o confronto setorial. */
+function userSectors(){
   const defesa = sectorAverage(SECTORS.Defesa);
   const meio   = sectorAverage(SECTORS.Meio);
   const ataque = sectorAverage(SECTORS.Ataque);
-  return Math.floor((defesa + meio + ataque) / 3);
+  return {Defesa: defesa ?? 60, Meio: meio ?? 60, Ataque: ataque ?? 60};
+}
+
+function userOverall(){
+  const s = userSectors();
+  return Math.floor((s.Defesa + s.Meio + s.Ataque) / 3);
 }
 
 /* Sorteia 4 adversários reais do banco de dados, com dificuldade crescente:
    um de cada "quartil" de força, colocados em ordem crescente de overall. */
 function pickCupOpponents(){
-  const scored = TEAMS.map(t => ({...t, _ovr: squadOverall(t.players)}))
+  const scored = TEAMS.map(t => ({...t, _sectors: squadSectors(t.players), _ovr: squadOverall(t.players)}))
                        .sort((a,b) => a._ovr - b._ovr);
   const n = scored.length;
   const cuts = [0, Math.floor(n*0.25), Math.floor(n*0.5), Math.floor(n*0.75), n];
@@ -157,8 +172,14 @@ function poissonRandom(lambda){
   return k - 1;
 }
 
-function goalLambda(ownOvr, oppOvr, homeBonus){
-  const lambda = 1.35 + (ownOvr - oppOvr) * 0.045 + homeBonus;
+/* attackEdge: ataque de quem finaliza MENOS defesa de quem defende —
+   é o principal fator (quem cria e converte mais chance vs. quem evita).
+   midEdge: domínio de meio-campo (meu meio menos o meio do rival) — um
+   time que manda no meio-campo cria mais volume de jogo pro seu ataque,
+   então pesa a favor de quem tem esse setor melhor, mesmo sem ser o
+   fator decisivo (por isso o peso menor que o do ataque/defesa). */
+function goalLambda(attackEdge, midEdge, homeBonus){
+  const lambda = 1.35 + attackEdge * 0.05 + midEdge * 0.022 + homeBonus;
   return Math.max(0.25, Math.min(4.2, lambda));
 }
 
@@ -253,7 +274,11 @@ function buildMatchNarrative(result, userName, oppName, context={}){
   if(won && result.userEvents.some(e=>e.minute>90)) msgs.push(`⏱️ GOL NOS ACRÉSCIMOS! ${userName} decidiu o jogo no apagar das luzes.`);
   if(lost && result.oppEvents.some(e=>e.minute>90)) msgs.push(`💔 Drama até o fim: ${oppName} encontrou o gol decisivo já nos acréscimos.`);
   if(draw && lateEqualizer) msgs.push(`⏱️ No último suspiro! ${userName} arrancou o empate e manteve a decisão completamente aberta.`);
-  if(draw && events.length===0) msgs.push(`🧱 Jogo travado do início ao fim: ninguém conseguiu furar as defesas. A decisão fica para os pênaltis.`);
+  if(draw && events.length===0){
+    msgs.push(context.isDecisive
+      ? `🧱 Jogo travado do início ao fim: ninguém conseguiu furar as defesas. A decisão fica para os pênaltis.`
+      : `🧱 Jogo travado do início ao fim: ninguém conseguiu furar as defesas. Tudo em aberto para o jogo de volta.`);
+  }
   if(leadChanges>=2) msgs.push(`🎢 Um verdadeiro roteiro de cinema: o placar mudou de lado e a torcida viveu cada minuto no limite.`);
   if(!msgs.length){
     msgs.push(won ? `⚽ Vitória importante! ${userName} foi mais eficiente e fechou a partida em ${score}.`
@@ -287,13 +312,22 @@ function normalizedOppSquad(opp){
   return opp.players.map(p => ({name:p.n, pos:primaryPos(p.p), ovr:p.ovr}));
 }
 
-/* userHome: true = usuário manda o jogo, false = adversário manda, null = neutro (final) */
-function simulateMatch(userOvr, oppOvr, userHome, userPlayers, oppPlayers){
+/* userHome: true = usuário manda o jogo, false = adversário manda, null = neutro (final).
+   userSectors/oppSectors: {Defesa,Meio,Ataque} de cada time (ver squadSectors/userSectors).
+   Em vez de comparar só a média geral, cada time ataca contra a DEFESA do
+   outro (ataque vs. defesa é o confronto que decide quem cria e sofre gol),
+   e o meio-campo entra como fator extra de volume de jogo pros dois lados. */
+function simulateMatch(userSectors, oppSectors, userHome, userPlayers, oppPlayers){
   const HOME_BONUS = 0.32; // leve vantagem de jogar em casa
   const userBonus = userHome === true  ? HOME_BONUS : 0;
   const oppBonus  = userHome === false ? HOME_BONUS : 0;
-  const userGoals = poissonRandom(goalLambda(userOvr, oppOvr, userBonus));
-  const oppGoals  = poissonRandom(goalLambda(oppOvr, userOvr, oppBonus));
+
+  const userAttackEdge = userSectors.Ataque - oppSectors.Defesa;
+  const oppAttackEdge  = oppSectors.Ataque - userSectors.Defesa;
+  const midEdge = userSectors.Meio - oppSectors.Meio; // positivo = usuário domina o meio
+
+  const userGoals = poissonRandom(goalLambda(userAttackEdge, midEdge, userBonus));
+  const oppGoals  = poissonRandom(goalLambda(oppAttackEdge, -midEdge, oppBonus));
   return {
     userGoals, oppGoals,
     userEvents: generateGoalEvents(userGoals, userPlayers),
@@ -400,6 +434,7 @@ function startCup(){
     lastLegResult: null,
     status: "ready", // ready | played | roundOver | eliminated | champion | runnerup
     userOvr: userOverall(),
+    userSectors: userSectors(),
   };
   state.phase = "cup";
   renderPitch();
@@ -425,7 +460,7 @@ function currentStadium(){
 function playLeg(){
   const opp = currentOpponent();
   const userHome = currentLegIsUserHome();
-  const res = simulateMatch(cup.userOvr, opp._ovr, userHome, normalizedUserSquad(), normalizedOppSquad(opp));
+  const res = simulateMatch(cup.userSectors, opp._sectors, userHome, normalizedUserSquad(), normalizedOppSquad(opp));
   cup.lastLegResult = {...res, stadium: currentStadium(), userHome, opponent: opp};
   cup.legResults.push(res);
 
@@ -512,7 +547,7 @@ function finishRound(){
 
   const aggregateBefore = !isFinalRound() && cup.legResults.length===2
     ? {user:cup.legResults[0].userGoals, opp:cup.legResults[0].oppGoals} : null;
-  const narrative = buildMatchNarrative(cup.lastLegResult, getTeamName(), opp.team+" ("+opp.year+")", {aggregateBefore, penalties});
+  const narrative = buildMatchNarrative(cup.lastLegResult, getTeamName(), opp.team+" ("+opp.year+")", {aggregateBefore, penalties, isDecisive:true});
   cup.roundHistory.push({
     roundIdx: cup.roundIdx, opponent: opp, aggUser, aggOpp, penalties, advanced, narrative,
     legs: cup.legResults.slice(), stadium: isFinalRound() ? cup.finalStadium : null,
@@ -797,7 +832,7 @@ function renderCupScreen(){
         </div>
         ${aggNote}
         ${sumulaHtml(r.userEvents, r.oppEvents, getTeamName(), opp.team+"("+opp.year+")")}
-        ${narrativeHtml(buildMatchNarrative(r, getTeamName(), opp.team+" ("+opp.year+")"))}
+        ${narrativeHtml(buildMatchNarrative(r, getTeamName(), opp.team+" ("+opp.year+")", {isDecisive: isFinalRound() || cup.legIdx===1}))}
         <div class="controls" style="justify-content:center;">
           <button class="action primary" onclick="continueCup()">Continuar</button>
         </div>
@@ -820,10 +855,35 @@ function renderCupScreen(){
         <div class="vs-score">?<span>x</span>?</div>
         <div class="vs-team"><div class="vs-name">${userHome===false? getTeamName() : opp.team+"("+opp.year+")"}</div><div class="vs-ovr">${userHome===false? cup.userOvr : opp._ovr}</div></div>
       </div>
+      ${sectorMatchupHtml(cup.userSectors, opp._sectors)}
       ${speedSelectHtml()}
       <div class="controls" style="justify-content:center;">
         <button class="action primary" onclick="playLeg()">Simular jogo</button>
       </div>
     </div>
   `;
+}
+
+/* Confronto setorial mostrado antes da partida: ataque de cada time contra
+   a defesa do outro (é isso que pesa mais na chance de gol) e o duelo de
+   meio-campo (que dá volume de jogo extra pra quem manda nesse setor).
+   É só a mesma conta que o simulador faz, só que exposta pro jogador. */
+function sectorMatchupHtml(userS, oppS){
+  const row = (label, mine, rival, note) => {
+    const diff = mine - rival;
+    const cls = diff > 1.5 ? "edge-mine" : diff < -1.5 ? "edge-rival" : "edge-even";
+    return `
+      <div class="sector-row ${cls}">
+        <span class="sector-val mine">${Math.round(mine)}</span>
+        <span class="sector-mid"><span class="sector-lbl">${label}</span><span class="sector-note">${note}</span></span>
+        <span class="sector-val rival">${Math.round(rival)}</span>
+      </div>`;
+  };
+  return `
+    <div class="sector-matchup">
+      <div class="sector-matchup-title">⚔️ Confronto de setores</div>
+      ${row("Seu ataque × Defesa dele", userS.Ataque, oppS.Defesa, "quem cria mais chance de gol")}
+      ${row("Meio-campo", userS.Meio, oppS.Meio, "quem manda no volume de jogo")}
+      ${row("Sua defesa × Ataque dele", userS.Defesa, oppS.Ataque, "quem evita sofrer gol")}
+    </div>`;
 }
